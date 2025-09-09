@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>INGRES Chatbot - Frontend (Improved Demo)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<!-- React + ReactDOM + Babel (for quick prototyping) -->
+<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Basic styling (replace or port to Tailwind if you prefer) -->
+<style>
+:root {
+  --bg: #0f172a;
+  --card: #0b1220;
+  --accent: #3b82f6;
+  --muted: #94a3b8;
+  --user: #0ea5a4;
+  --bot: #111827;
+  --text-primary: #e6eef8;
+  --text-secondary: #dbeafe;
+  --text-muted: #94a3b8;
+  --border: rgba(255,255,255,0.03);
+  --input-bg: rgba(255,255,255,0.02);
+  --bubble-user-bg: linear-gradient(90deg, rgba(14,165,164,0.12), rgba(59,130,246,0.12));
+  --bubble-bot-bg: rgba(255,255,255,0.02);
+  --shadow: rgba(2,6,23,0.6);
+  --gradient-bg: linear-gradient(180deg, #071025 0%, #071a2a 100%);
+  --container-bg: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+}
+
+[data-theme="light"] {
+  --bg: #ffffff;
+  --card: #f8fafc;
+  --accent: #3b82f6;
+  --muted: #64748b;
+  --user: #0ea5a4;
+  --bot: #f1f5f9;
+  --text-primary: #1e293b;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --border: rgba(0,0,0,0.1);
+  --input-bg: rgba(0,0,0,0.02);
+  --bubble-user-bg: linear-gradient(90deg, rgba(14,165,164,0.1), rgba(59,130,246,0.1));
+  --bubble-bot-bg: #f8fafc;
+  --shadow: rgba(0,0,0,0.1);
+  --gradient-bg: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+  --container-bg: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  height: 100vh;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: var(--gradient-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  transition: background 0.3s ease, color 0.3s ease;
+}
+.container {
+  width: 960px;
+  max-width: 96%;
+  height: 86vh;
+  background: var(--container-bg);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px var(--shadow);
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  overflow: hidden;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+/* Left pane: controls / recent chats */
+.left {
+  background: var(--input-bg);
+  padding: 16px;
+  border-right: 1px solid var(--border);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  margin-bottom: 12px;
+}
+.lang-select {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 8px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+.mock-btn {
+  display:inline-block;
+  padding:8px 10px;
+  border-radius:8px;
+  background: var(--input-bg);
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  cursor: pointer;
+  margin-bottom:12px;
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Chat area */
+.right {
+  display:flex;
+  flex-direction:column;
+  gap: 8px;
+  padding: 12px;
+}
+.messages {
+  flex:1;
+  overflow:auto;
+  padding: 12px;
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+  scrollbar-width: thin;
+}
+.bubble {
+  max-width: 78%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  line-height: 1.3;
+  box-shadow: 0 2px 8px var(--shadow);
+  word-break: break-word;
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+.bubble.user {
+  align-self: flex-end;
+  background: var(--bubble-user-bg);
+  border: 1px solid rgba(14,165,164,0.14);
+  color: var(--text-primary);
+}
+.bubble.bot {
+  align-self: flex-start;
+  background: var(--bubble-bot-bg);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  user-select: none;
+  transition: color 0.3s ease;
+}
+.input-row {
+  display:flex;
+  gap:8px;
+  padding:8px;
+  border-top:1px solid var(--border);
+  background: var(--container-bg);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+.input {
+  flex:1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: none;
+  outline: none;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  resize: vertical;
+  min-height: 40px;
+  max-height: 120px;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  cursor:pointer;
+  font-weight:600;
+  user-select: none;
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.mic {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--text-muted);
+  user-select: none;
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+.mic:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Table styling */
+.resp-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 8px;
+  color: var(--text-secondary);
+  transition: color 0.3s ease;
+}
+.resp-table th, .resp-table td {
+  border: 1px solid var(--border);
+  padding: 8px;
+  text-align:left;
+  font-size: 13px;
+  transition: border-color 0.3s ease;
+}
+.resp-table th {
+  background: var(--input-bg);
+  color: var(--text-primary);
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-bottom: 12px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.theme-toggle:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+/* small */
+@media (max-width:900px){
+  .container { grid-template-columns:1fr; height:95vh; }
+  .left { display:none; }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- The app -->
+<script type="text/babel">
+
+const { useState, useEffect, useRef } = React;
+
+/***** Helper: mock fetch *****/
+function mockFetchUserQuery(text) {
+  const t = text.toLowerCase();
+  if (t.includes("trend") || t.includes("recharge") || t.includes("compare")) {
+    return new Promise(res => setTimeout(() => res({
+      type: "chart",
+      chartType: "line",
+      title: "Recharge vs Extraction (2018-2023) - Jaipur",
+      labels: ["2018","2019","2020","2021","2022","2023"],
+      datasets: [
+        { label: "Recharge (mm/year)", data: [42,48,45,50,55,53] },
+        { label: "Extraction (mm/year)", data: [38,45,50,52,57,60] }
+      ],
+      text: "Here is the multi-year trend for Jaipur."
+    }), 700));
+  } else if (t.includes("stage") || t.includes("status")) {
+    return new Promise(res => setTimeout(() => res({
+      type: "table",
+      title: "Groundwater Stage - Jaipur 2022",
+      headers: ["Parameter","Value","Category"],
+      rows: [
+        ["Groundwater Level (m bgl)","12.3","Critical"],
+        ["Recharge (mm/year)","53","Normal"],
+        ["Extraction (mm/year)","60","Over-Exploited"]
+      ],
+      text: "Stage summary for Jaipur, 2022."
+    }), 600));
+  } else {
+    return new Promise(res => setTimeout(() => res({
+      type: "text",
+      text: "Sorry, I didn't quite get that. Try: 'show recharge trend Jaipur' or 'stage Jaipur 2022'."
+    }), 350));
+  }
+}
+
+/* Chart component that uses Chart.js */
+function ChartBlock({ config, height=220, theme='dark' }) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    const ctx = canvasRef.current.getContext('2d');
+    if (chartRef.current) {
+      chartRef.current.destroy();
+    }
+   
+    const isDark = theme === 'dark';
+    const textColor = isDark ? '#dbeafe' : '#334155';
+    const gridColor = isDark ? 'rgba(203, 213, 225, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+   
+    const datasets = config.datasets.map((ds, index) => ({
+      label: ds.label,
+      data: ds.data,
+      tension: 0.3,
+      fill: false,
+      borderWidth: 2,
+      borderColor: index === 0 ? '#3b82f6' : '#0ea5a4',
+      backgroundColor: index === 0 ? '#3b82f6' : '#0ea5a4',
+      pointRadius: 3,
+      pointHoverRadius: 5,
+    }));
+   
+    chartRef.current = new Chart(ctx, {
+      type: config.chartType || 'line',
+      data: {
+        labels: config.labels,
+        datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: textColor } },
+          title: { display: !!config.title, text: config.title, color: textColor }
+        },
+        scales: {
+          x: {
+            ticks: { color: textColor },
+            grid: { color: gridColor }
+          },
+          y: {
+            ticks: { color: textColor },
+            grid: { color: gridColor }
+          }
+        }
+      }
+    });
+
+    return () => { if (chartRef.current) chartRef.current.destroy(); };
+  }, [config, theme]);
+
+  return <div style={{height: height, position:'relative'}}><canvas ref={canvasRef} aria-label={config.title || 'Chart'} role="img" /></div>;
+}
+
+function MessageBubble({ who, meta, children }) {
+  return (
+    <div className={`bubble ${who}`} role="listitem" aria-live={who === 'bot' ? 'polite' : undefined}>
+      {meta && <div className="meta">{meta}</div>}
+      <div>{children}</div>
+    </div>
+  );
+}
+
+function MessageContent({ payload, theme }) {
+  if (!payload) return null;
+  if (payload.type === 'text') {
+    return <div>{payload.text}</div>;
+  } else if (payload.type === 'table') {
+    return (
+      <div>
+        {payload.text && <div style={{marginBottom:6}}>{payload.text}</div>}
+        <div style={{overflowX:'auto'}}>
+          <table className="resp-table" role="table" aria-label={payload.title || 'Data table'}>
+            <thead>
+              <tr>
+                {payload.headers.map((h,i) => <th key={i} scope="col">{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {payload.rows.map((r,ri) => (
+                <tr key={ri}>
+                  {r.map((cell,ci) => <td key={ci}>{cell}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  } else if (payload.type === 'chart') {
+    return (
+      <div>
+        {payload.text && <div style={{marginBottom:8}}>{payload.text}</div>}
+        <ChartBlock config={payload} height={260} theme={theme} />
+      </div>
+    );
+  } else {
+    return <div>{JSON.stringify(payload)}</div>;
+  }
+}
+
+function App(){
+  const [messages, setMessages] = useState([
+    {
+      id:1,
+      who: 'bot',
+      meta: `INGRES Bot • ${new Date().toLocaleTimeString()}`,
+      payload: {
+        type:'text',
+        text: 'Hi! Ask me about groundwater stage, recharge trends or historical comparisons (e.g., "recharge trend Jaipur").'
+      }
+    }
+  ]);
+  const [input, setInput] = useState('');
+  const [lang, setLang] = useState('en');
+  const [loading, setLoading] = useState(false);
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = localStorage.getItem('ingres-theme');
+    return savedTheme || 'dark';
+  });
+  const msgRef = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (msgRef.current) {
+      msgRef.current.scrollTo({
+        top: msgRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('ingres-theme', theme);
+  }, [theme]);
+
+  function pushMessage(msg){
+    setMessages(prev => [...prev, {...msg, id: Date.now()+Math.random()}]);
+  }
+
+  async function handleSend(){
+    const trimmed = input.trim();
+    if (!trimmed || loading) return;
+    pushMessage({ who:'user', meta: `You • ${new Date().toLocaleTimeString()}`, payload: { type:'text', text: trimmed } });
+    setInput('');
+    setLoading(true);
+
+    try {
+      // === REAL BACKEND CALL (absolute URL for Live Server) ===
+      const res = await fetch('http://localhost:3000/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: trimmed, lang })
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`Backend error: ${res.status} ${t}`);
+      }
+      const botResp = await res.json();
+
+      pushMessage({ who:'bot', meta: `INGRES Bot • ${new Date().toLocaleTimeString()}`, payload: botResp });
+    } catch (err) {
+      pushMessage({ who:'bot', meta: `INGRES Bot • ${new Date().toLocaleTimeString()}`, payload: {type:'text', text: 'Error: could not reach backend.'}});
+      console.error(err);
+    } finally {
+      setLoading(false);
+      inputRef.current?.focus();
+    }
+  }
+
+  function handleKey(e){
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }
+
+  function handleLanguageChange(e){
+    setLang(e.target.value);
+    // optional: inform backend of language preference on each request
+  }
+
+  function toggleTheme(){
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  }
+
+  return (
+    <div className="container" role="application" aria-label="INGRES Chatbot UI">
+      <div className="left">
+        <div className="brand">INGRES Chatbot — Frontend</div>
+       
+        <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
+          {theme === 'dark' ? '☀️' : '🌙'} {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+        </button>
+
+        <div style={{fontSize:13, color:'var(--text-muted)', marginBottom:10}}>Language</div>
+        <select className="lang-select" value={lang} onChange={handleLanguageChange} aria-label="Select language">
+          <option value="en">English</option>
+          <option value="hi">Hindi</option>
+          <option value="mr">Marathi</option>
+          <option value="bn">Bengali</option>
+          <option value="ta">Tamil</option>
+        </select>
+
+        <div style={{marginTop:8}}>
+          <div className="mock-btn" onClick={() => {
+            setInput('Show recharge trend Jaipur');
+            inputRef.current?.focus();
+          }} role="button" tabIndex={0} onKeyDown={e => { if(e.key === 'Enter' || e.key === ' ') { setInput('Show recharge trend Jaipur'); inputRef.current?.focus(); } }}>
+            Try sample query
+          </div>
+        </div>
+
+        <div style={{marginTop:16, color: 'var(--text-muted)', fontSize:13}}>
+          Quick tips:
+          <ul style={{marginTop:8, paddingLeft:16, color:'var(--text-muted)'}}>
+            <li>Ask: "recharge trend Jaipur"</li>
+            <li>Ask: "stage Jaipur 2022"</li>
+            <li>Switch language before sending to request translated output</li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="right">
+        <div ref={msgRef} className="messages" id="messages" role="list" aria-live="polite" aria-relevant="additions">
+          {messages.map(m => (
+            <MessageBubble key={m.id} who={m.who} meta={m.meta}>
+              <MessageContent payload={m.payload} theme={theme} />
+            </MessageBubble>
+          ))}
+          {loading && (
+            <div className="bubble bot" aria-label="Bot is typing" role="status" aria-live="polite" style={{fontStyle:'italic'}}>
+              INGRES Bot is typing...
+            </div>
+          )}
+        </div>
+
+        <div className="input-row">
+          <button className="mic" title="Voice (placeholder)" disabled={loading} aria-label="Voice input (not implemented)">
+            🎤
+          </button>
+          <textarea
+            className="input"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKey}
+            placeholder="Type your query (e.g., 'recharge trend Jaipur')"
+            disabled={loading}
+            ref={inputRef}
+            aria-label="Chat input"
+            rows={2}
+          />
+          <button className="btn" onClick={handleSend} disabled={loading || !input.trim()} aria-label="Send message">
+            {loading ? "Sending..." : "Send"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Render
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+</script>
+</body>
+</html>
